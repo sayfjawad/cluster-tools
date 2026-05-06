@@ -1,0 +1,83 @@
+# cluster-tools
+
+Dit repository bevat alle shell‑scripts die worden gebruikt voor het beheren, controleren en uitvoeren van taken op de OpenClaw/Hermes GPU‑cluster. Hieronder vind je een overzicht van elke script en diens doel.
+
+## Inhoudsopgave
+- [Provisioning](#provisioning)
+- [Health‑checking](#health-checking)
+- [Node‑selectie & orchestratie](#node-selectie--orchartorie)
+- [Ollama‑taken](#ollama‑taken)
+- [Configuratie‑bestanden](#configuratie‑bestanden)
+
+## Provisionsing
+| Script | Pad | Doel |
+|--------|-----|------|
+| `cluster-bootstrap/bootstrap-worker.sh` | `cluster-bootstrap/bootstrap-worker.sh` | Installeert systeem‑packages, Docker, maakt benodigde directories, stelt firewall‑regels en een health‑check‑script op. |
+
+## Health‑checking
+| Script | Pad | Doel |
+|--------|-----|------|
+| `cluster/bin/cluster-health-deep` | `cluster/bin/cluster-health-deep` | Uitgebreide health‑check (CPU, RAM, schijf, Docker‑status, GPU‑info, laadgemiddelden). |
+| `cluster/reports/health-20260501-232132.log` | `cluster/reports/health-20260501-232132.log` | Logbestand met output van `cluster-health-deep`. |
+
+## Node‑selectie & orchestratie
+| Script | Pad | Doel |
+|--------|-----|------|
+| `cluster/bin/cluster-node-score` | `cluster/bin/cluster-node-score` | Berekent een score voor elke node op basis van GPU‑aantal, laad, etc. |
+| `cluster/bin/cluster-pick-node` | `cluster/bin/cluster-node-score` | Kies de beste node voor een taak volgens de scores. |
+| `cluster/bin/cluster-run` | `cluster/bin/cluster-run` | Voert een opgegeven command‑uit op de gekozen node via SSH. |
+| `cluster/bin/cluster-run-all` | `cluster/bin/cluster-run-all` | Voert een command‑uit op **alle** nodes parallel. |
+| `cluster/bin/cluster-status` | `cluster/bin/cluster-status` | Toont een snelle/status‑overzicht van alle nodes. |
+| `cluster/bin/hermes-cluster` | `cluster/bin/hermes-cluster` | Wrapper met Hermes‑specifieke flags rond de cluster‑tools. |
+| `cluster/bin/hermes-cluster-smoke` | `cluster/bin/hermes-cluster-smoke` | Lichtgewicht smoke‑test van het hele cluster. |
+| `cluster/bin/hermes-pick-worker` | `cluster/bin/hermes-pick-worker` | Laadt de logische werknametoewijzing uit `workers.yaml`. |
+| `cluster/bin/hermes-worker-status` | `cluster/bin/hermes-worker-status` | Print uptime, load‑avg en GPU‑gebruik van een worker. |
+
+## Ollama‑taken
+| Script | Pad | Doel |
+|--------|-----|------|
+| `cluster/bin/ollama-bench` | `cluster/bin/ollama-bench` | Benchmark een lokale Ollama‑model (runtime, geheugen, etc.). |
+| `cluster/bin/ollama-bench-summary` | `cluster/bin/ollama-bench-summary` | Verzamelt benchmark‑resultaten van meerdere nodes in één table. |
+| `cluster/bin/ollama-dir-task` | `cluster/bin/ollama-dir-task` | Streamt een geheel `directory` met scripts naar een target‑node. |
+| `cluster/bin/ollama-file-task` | `cluster/bin/ollama-file-task` | Streamt één enkel script‑bestand naar een target‑node. |
+| `cluster/bin/ollama-project-task` | `cluster/bin/ollama-project-task` | Run een multi‑step “project” van Ollama‑commando’s op een node. |
+| `cluster/bin/ollama-pull` | `cluster/bin/ollama-pull` | Pullt een Docker‑image / Ollama‑model naar de target‑node. |
+| `cluster/bin/ollama-pull-best` | `cluster/bin/ollama-pull-best` | Kies de “best” tag (bijv. latest stable) en pullt die. |
+| `cluster/bin/ollama-run` | `cluster/bin/ollama-run` | Run een user‑provided Ollama‑command on the selected node. |
+| `cluster/bin/ollama-run-best` | `cluster/bin/ollama-run-best` | Run een command on the node selected by `cluster-pick-node`. |
+| `cluster/bin/ollama-status` | `cluster/bin/ollama-status` | Toont welke Ollama‑modellen lokaal gecached zijn. |
+| `cluster/bin/ollama-tags` | `cluster/bin/ollama-tags` | List remote tags for a given model name. |
+| `cluster/bin/ollama-task` | `cluster/bin/ollama-task` | Generic dispatcher: picks a node and runs a supplied task. |
+
+## Configuratie‑bestanden
+| Bestand | Pad | Doel |
+|---------|-----|------|
+| `cluster/cluster-gateway.env` | `cluster/cluster-gateway.env` | Omgevingsvariabelen (gateway‑hosts, poorten, credentials). |
+| `cluster/nodes/*.conf` | `cluster/nodes/*.conf` | Per‑node configuratie (hostname, SSH‑port, user). |
+| `cluster/workers.yaml` | `cluster/workers.yaml` | Hoofd‑yaml‑bestand met volledige lijst van workers, rollen en contactinfo. |
+
+---
+
+### Hoe te gebruiken
+1. **Provision a new worker**  
+   ```bash
+   ./cluster-bootstrap/bootstrap-worker.sh <username>
+   ```
+2. **Check cluster health**  
+   ```bash
+   ./cluster/bin/cluster-health-deep
+   ```
+3. **Select a node & run a command**  
+   ```bash
+   ./cluster/bin/cluster-pick-node | xargs -I{} ./cluster/bin/cluster-run --node {} --command "docker ps"
+   ```
+4. **Run an Ollama task on the best node**  
+   ```bash
+   ./cluster/bin/ollama-run-best --model nemotron-3-nano --command "echo hello"
+   ```
+
+All scripts are executable (`chmod +x`). They rely on `ssh`, `git`, `docker` and `nvidia‑smi` being available on the target nodes.
+
+---
+
+*Generated by the OpenClaw automation scripts.*
