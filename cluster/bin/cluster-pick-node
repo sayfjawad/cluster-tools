@@ -1,0 +1,65 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+if [ $# -ne 1 ]; then
+  echo "Gebruik: cluster-pick-node <label>" >&2
+  exit 1
+fi
+
+LABEL="$1"
+NODE_DIR="${HOME}/cluster/nodes"
+SCORER="${HOME}/cluster/bin/cluster-node-score"
+
+BEST_HOST=""
+BEST_SCORE=-999999
+
+for file in "$NODE_DIR"/*.conf; do
+  [ -f "$file" ] || continue
+
+  unset HOST ARCH GPU_CLASS GPU_COUNT VRAM_CLASS ROLES PRIORITY SCORE REACHABLE
+  source "$file"
+
+  MATCH=0
+
+  if echo ",${ROLES:-}," | grep -q ",${LABEL},"; then
+    MATCH=1
+  fi
+
+  if [ "${ARCH:-}" = "$LABEL" ] || [ "${VRAM_CLASS:-}" = "$LABEL" ]; then
+    MATCH=1
+  fi
+
+  if echo "${GPU_CLASS:-}" | tr ',' '\n' | grep -qx "$LABEL"; then
+    MATCH=1
+  fi
+
+  if [ "$MATCH" -ne 1 ]; then
+    continue
+  fi
+
+  PRIORITY="${PRIORITY:-50}"
+
+  RAW="$("$SCORER" "$HOST")"
+  eval "$RAW"
+
+  REACHABLE="${REACHABLE:-0}"
+  LIVE_SCORE="${SCORE:- -999999}"
+
+  if [ "$REACHABLE" != "1" ]; then
+    continue
+  fi
+
+  TOTAL_SCORE=$((PRIORITY * 100 + LIVE_SCORE))
+
+  if [ "$TOTAL_SCORE" -gt "$BEST_SCORE" ]; then
+    BEST_SCORE="$TOTAL_SCORE"
+    BEST_HOST="$HOST"
+  fi
+done
+
+if [ -z "$BEST_HOST" ]; then
+  echo "Geen node gevonden voor label: $LABEL" >&2
+  exit 2
+fi
+
+echo "$BEST_HOST"

@@ -1,0 +1,95 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+if [ $# -lt 2 ]; then
+  echo 'Usage: ollama-project-task <task-type> <project-dir>' >&2
+  echo 'Task types: code, refactor, test, sql, explain, summarize, translate, reason, general' >&2
+  exit 1
+fi
+
+TASK="$1"
+PROJECT_DIR="$2"
+
+if [ ! -d "$PROJECT_DIR" ]; then
+  echo "Project directory not found: $PROJECT_DIR" >&2
+  exit 2
+fi
+
+MAX_FILES=30
+MAX_FILE_BYTES=80000
+
+case "$TASK" in
+  code|refactor|test)
+    INCLUDE_REGEX='.*\.(java|kt|groovy|scala|py|js|ts|tsx|vue|c|cpp|h|hpp|cs|go|rs|php|rb|swift|sql|sh|bash|zsh|yml|yaml|properties|xml|json|md)$'
+    ;;
+  sql)
+    INCLUDE_REGEX='.*\.(sql|ddl|dml|yml|yaml|json|properties|md|txt)$'
+    ;;
+  explain|summarize|reason|general|translate)
+    INCLUDE_REGEX='.*\.(md|txt|adoc|rst|yml|yaml|json|properties|xml|java|kt|py|js|ts|sql|sh)$'
+    ;;
+  *)
+    echo "Unknown task type: $TASK" >&2
+    exit 3
+    ;;
+esac
+
+TMP="$(mktemp)"
+COUNT=0
+
+while IFS= read -r -d '' FILE; do
+  if [ "$COUNT" -ge "$MAX_FILES" ]; then
+    break
+  fi
+
+  REL="${FILE#$PROJECT_DIR/}"
+
+  case "$REL" in
+    .git/*|node_modules/*|target/*|build/*|dist/*|coverage/*|.idea/*|.vscode/*|out/*|bin/*|.gradle/*|.mvn/*|venv/*|.venv/*|__pycache__/*)
+      continue
+      ;;
+  esac
+
+  if ! printf '%s\n' "$FILE" | grep -E -q "$INCLUDE_REGEX"; then
+    continue
+  fi
+
+  if ! file --mime "$FILE" | grep -q 'charset='; then
+    continue
+  fi
+
+  SIZE="$(wc -c < "$FILE" | awk '{print $1}')"
+  if [ "$SIZE" -gt "$MAX_FILE_BYTES" ]; then
+    continue
+  fi
+
+  {
+    echo "===== FILE: $REL ====="
+    cat "$FILE"
+    echo
+  } >> "$TMP"
+
+  COUNT=$((COUNT + 1))
+done < <(find "$PROJECT_DIR" -type f -print0 | sort -z)
+
+if [ "$COUNT" -eq 0 ]; then
+  rm -f "$TMP"
+  echo "No suitable project files found in: $PROJECT_DIR" >&2
+  exit 4
+fi
+
+CONTENT="$(cat "$TMP")"
+rm -f "$TMP"
+
+PROMPT="Project directory: $PROJECT_DIR
+
+Task type: $TASK
+Included files: $COUNT
+Max files: $MAX_FILES
+Max file size: $MAX_FILE_BYTES bytes
+
+Analyze the following project content:
+
+$CONTENT"
+
+exec "$HOME/cluster/bin/ollama-task" "$TASK" "$PROMPT"

@@ -1,0 +1,79 @@
+workers:
+  gx10:
+    host: gx10
+    ip: 100.64.0.3
+    type: ollama
+    url: http://100.64.0.3:11434
+    default_model: nemotron-3-nano:latest
+    roles:
+      - planner
+      - reasoning
+      - large-context
+      - repo-analysis
+      - refactor-strategy
+    priority: 100
+    status: active
+
+  z8:
+    host: z8
+    ip: 100.64.0.2
+    type: hybrid
+    ollama_url: http://100.64.0.2:11434
+    default_model: deepseek-coder:33b
+    roles:
+      - coder
+      - executor
+      - tests
+      - refactor-execution
+      - sql
+    priority: 90
+    status: active
+
+  3x-v100:
+    host: 3x-v100
+    ip: 100.64.0.10
+    type: ssh-executor
+    roles:
+      - heavy-executor
+      - multi-gpu
+      - batch
+      - gpu-container
+    priority: 95
+    status: active
+
+  v100-1:
+    host: v100-1
+    ip: 100.64.0.7
+    type: ollama
+    url: http://100.64.0.7:11434
+    default_model: llama3.2:latest
+    roles:
+      - general
+      - fallback
+    priority: 70
+    status: active
+
+  v100-2:
+    host: v100-2
+    ip: 100.64.0.6
+    type: ollama
+    url: http://100.64.0.6:11434
+    default_model: nemotron-3-nano:latest
+    roles:
+      - explainer
+      - reasoner-fallback
+    priority: 75
+    status: degraded
+    issue: ssh-timeout
+
+  vivobook:
+    host: vivobook
+    ip: 100.64.0.4
+    type: ssh-executor
+    roles:
+      - light
+      - mobile
+      - desktop
+      - fallback
+    priority: 50
+    status: active

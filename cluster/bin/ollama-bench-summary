@@ -1,0 +1,37 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+if [ $# -lt 3 ]; then
+  echo 'Usage: ollama-bench-summary <node> <model> "<prompt>"' >&2
+  exit 1
+fi
+
+NODE="$1"
+MODEL="$2"
+shift 2
+PROMPT="$*"
+
+case "$NODE" in
+  v100-1) URL="http://100.64.0.7:11434" ;;
+  v100-2) URL="http://100.64.0.6:11434" ;;
+  *) echo "Unknown node: $NODE" >&2; exit 2 ;;
+esac
+
+TMP="$(mktemp)"
+START="$(date +%s%3N)"
+curl -s --max-time 600 "$URL/api/generate" \
+  -d "{\"model\":\"$MODEL\",\"prompt\":\"$PROMPT\",\"stream\":false}" > "$TMP"
+END="$(date +%s%3N)"
+ELAPSED_MS=$((END - START))
+
+EVAL_COUNT="$(jq -r '.eval_count // 0' "$TMP")"
+EVAL_DURATION_NS="$(jq -r '.eval_duration // 0' "$TMP")"
+
+if [ "$EVAL_DURATION_NS" -gt 0 ] && [ "$EVAL_COUNT" -gt 0 ]; then
+  TOKENS_PER_SEC="$(awk "BEGIN { printf \"%.2f\", ($EVAL_COUNT * 1000000000) / $EVAL_DURATION_NS }")"
+else
+  TOKENS_PER_SEC="n/a"
+fi
+
+printf "%-8s %-20s %-12s %-12s\n" "$NODE" "$MODEL" "$ELAPSED_MS ms" "$TOKENS_PER_SEC tok/s"
+rm -f "$TMP"

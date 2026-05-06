@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+TASK="${1:-general}"
+
+case "$TASK" in
+  planner|plan|reasoning|reason|large-context|repo-analysis)
+    echo "gx10"
+    ;;
+  code|coder|coding|refactor|test|tests|sql|execute)
+    echo "z8"
+    ;;
+  heavy|batch|multi-gpu|gpu-container|big-job)
+    echo "3x-v100"
+    ;;
+  fallback|general|chat)
+    echo "v100-1"
+    ;;
+  *)
+    echo "gx10"
+    ;;
+esac

@@ -1,0 +1,118 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+if [ $# -ne 1 ]; then
+  echo "Gebruik: cluster-node-score <host>" >&2
+  exit 1
+fi
+
+HOST="$1"
+
+RAW="$(ssh -o BatchMode=yes -o ConnectTimeout=5 "$HOST" '
+set -e
+
+CPU_IDLE="$(LC_ALL=C top -bn1 | awk '"'"'/Cpu\(s\)/ {
+  for(i=1;i<=NF;i++){
+    if($i ~ /id,?$/){
+      v=$(i-1)
+      gsub(/,/, "", v)
+      print v
+      exit
+    }
+  }
+}'"'"' || echo 0)"
+
+LOAD1="$(cut -d" " -f1 /proc/loadavg 2>/dev/null || echo 999)"
+MEM_AVAIL_MB="$(free -m | awk '"'"'/^Mem:/ {print $7}'"'"' || echo 0)"
+
+if command -v nvidia-smi >/dev/null 2>&1; then
+  GPU_UTIL="$(nvidia-smi --query-gpu=utilization.gpu --format=csv,noheader,nounits 2>/dev/null \
+    | awk '"'"'
+      {
+        if ($1 ~ /^[0-9]+$/) { sum += $1; c++ }
+      }
+      END {
+        if (c > 0) print int(sum/c); else print 999
+      }'"'"')"
+
+  GPU_MEM_FREE="$(nvidia-smi --query-gpu=memory.free --format=csv,noheader,nounits 2>/dev/null \
+    | awk '"'"'
+      {
+        if ($1 ~ /^[0-9]+$/) sum += $1
+      }
+      END {
+        print sum+0
+      }'"'"')"
+else
+  GPU_UTIL=999
+  GPU_MEM_FREE=0
+fi
+
+echo "CPU_IDLE=$CPU_IDLE"
+echo "LOAD1=$LOAD1"
+echo "MEM_AVAIL_MB=$MEM_AVAIL_MB"
+echo "GPU_UTIL=$GPU_UTIL"
+echo "GPU_MEM_FREE=$GPU_MEM_FREE"
+' 2>/dev/null || true)"
+
+if [ -z "$RAW" ]; then
+  echo "HOST=$HOST"
+  echo "REACHABLE=0"
+  echo "SCORE=-999999"
+  exit 0
+fi
+
+eval "$RAW"
+
+CPU_IDLE="${CPU_IDLE:-0}"
+LOAD1="${LOAD1:-999}"
+MEM_AVAIL_MB="${MEM_AVAIL_MB:-0}"
+GPU_UTIL="${GPU_UTIL:-999}"
+GPU_MEM_FREE="${GPU_MEM_FREE:-0}"
+
+sanitize_int() {
+  local v="${1:-0}"
+  if [[ "$v" =~ ^[0-9]+([.][0-9]+)?$ ]]; then
+    echo "${v%.*}"
+  else
+    echo 0
+  fi
+}
+
+CPU_IDLE_INT="$(sanitize_int "$CPU_IDLE")"
+LOAD1_INT="$(sanitize_int "$LOAD1")"
+MEM_AVAIL_MB_INT="$(sanitize_int "$MEM_AVAIL_MB")"
+
+if [[ "$GPU_UTIL" =~ ^[0-9]+$ ]]; then
+  GPU_UTIL_INT="$GPU_UTIL"
+else
+  GPU_UTIL_INT=999
+fi
+
+if [[ "$GPU_MEM_FREE" =~ ^[0-9]+$ ]]; then
+  GPU_MEM_FREE_INT="$GPU_MEM_FREE"
+else
+  GPU_MEM_FREE_INT=0
+fi
+
+SCORE=0
+SCORE=$((SCORE + CPU_IDLE_INT))
+SCORE=$((SCORE - LOAD1_INT * 8))
+SCORE=$((SCORE + MEM_AVAIL_MB_INT / 512))
+
+if [ "$GPU_UTIL_INT" -lt 999 ]; then
+  SCORE=$((SCORE + (100 - GPU_UTIL_INT) * 2))
+fi
+
+if [ "$GPU_MEM_FREE_INT" -gt 0 ]; then
+  SCORE=$((SCORE + GPU_MEM_FREE_INT / 1024))
+fi
+
+echo "HOST=$HOST"
+echo "REACHABLE=1"
+echo "CPU_IDLE=$CPU_IDLE_INT"
+echo "LOAD1=$LOAD1"
+echo "MEM_AVAIL_MB=$MEM_AVAIL_MB_INT"
+echo "GPU_UTIL=$GPU_UTIL_INT"
+echo "GPU_MEM_FREE=$GPU_MEM_FREE_INT"
+echo "SCORE=$SCORE"

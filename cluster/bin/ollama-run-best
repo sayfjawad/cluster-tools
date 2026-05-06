@@ -1,0 +1,115 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+if [ $# -lt 2 ]; then
+  echo 'Usage: ollama-run-best <model> "<prompt>"' >&2
+  exit 1
+fi
+
+MODEL="$1"
+shift
+PROMPT="$*"
+
+node_url() {
+  case "$1" in
+    z8) echo "http://100.64.0.2:11434" ;;
+    v100-1) echo "http://100.64.0.7:11434" ;;
+    v100-2) echo "http://100.64.0.6:11434" ;;
+    *) return 1 ;;
+  esac
+}
+
+is_alive() {
+  local node="$1"
+  curl -s --max-time 5 "$(node_url "$node")/api/tags" >/dev/null 2>&1
+}
+
+has_model() {
+  local node="$1"
+  local model="$2"
+  curl -s --max-time 5 "$(node_url "$node")/api/tags" \
+    | jq -e --arg m "$model" '.models[]? | select(.name == $m or .model == $m or .name == ($m + ":latest") or .model == ($m + ":latest"))' \
+    >/dev/null 2>&1
+}
+
+is_code_prompt() {
+  local p
+  p="$(printf '%s' "$1" | tr '[:upper:]' '[:lower:]')"
+  [[ "$p" == *"code"* ]] || \
+  [[ "$p" == *"java"* ]] || \
+  [[ "$p" == *"python"* ]] || \
+  [[ "$p" == *"sql"* ]] || \
+  [[ "$p" == *"bash"* ]] || \
+  [[ "$p" == *"script"* ]] || \
+  [[ "$p" == *"function"* ]] || \
+  [[ "$p" == *"class"* ]] || \
+  [[ "$p" == *"refactor"* ]] || \
+  [[ "$p" == *"bug"* ]] || \
+  [[ "$p" == *"test"* ]]
+}
+
+pick_node() {
+  if is_code_prompt "$PROMPT"; then
+    if has_model z8 "$MODEL" && is_alive z8; then
+      echo "z8"
+      return 0
+    fi
+    if is_alive z8; then
+      echo "z8"
+      return 0
+    fi
+  fi
+
+  case "$MODEL" in
+    nemotron-3-nano|nemotron-3-nano:latest)
+      if has_model v100-2 "$MODEL" && is_alive v100-2; then
+        echo "v100-2"
+        return 0
+      fi
+      if is_alive v100-2; then
+        echo "v100-2"
+        return 0
+      fi
+      ;;
+    llama3.2|llama3.2:latest)
+      if has_model v100-1 "$MODEL" && is_alive v100-1; then
+        echo "v100-1"
+        return 0
+      fi
+      if is_alive v100-1; then
+        echo "v100-1"
+        return 0
+      fi
+      ;;
+  esac
+
+  for node in z8 v100-1 v100-2; do
+    if has_model "$node" "$MODEL" && is_alive "$node"; then
+      echo "$node"
+      return 0
+    fi
+  done
+
+  for node in z8 v100-1 v100-2; do
+    if is_alive "$node"; then
+      echo "$node"
+      return 0
+    fi
+  done
+
+  return 1
+}
+
+NODE="$(pick_node)" || {
+  echo "No healthy Ollama node available" >&2
+  exit 2
+}
+
+echo "Using $NODE" >&2
+
+PAYLOAD="$(jq -n \
+  --arg model "$MODEL" \
+  --arg prompt "$PROMPT" \
+  '{model:$model, prompt:$prompt, stream:false}')"
+
+curl -s "$(node_url "$NODE")/api/generate" -d "$PAYLOAD" | jq -r '.response // .error // "null"'

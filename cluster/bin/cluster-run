@@ -1,0 +1,34 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+if [ $# -lt 2 ]; then
+  echo 'Gebruik: cluster-run <host-of-label> "<commando>"' >&2
+  exit 1
+fi
+
+TARGET="$1"
+shift
+CMD="$*"
+
+PICKER="${HOME}/cluster/bin/cluster-pick-node"
+NODE_DIR="${HOME}/cluster/nodes"
+
+HOST=""
+
+for file in "$NODE_DIR"/*.conf; do
+  [ -f "$file" ] || continue
+  unset HOSTNAME_CANDIDATE HOST ARCH GPU_CLASS GPU_COUNT VRAM_CLASS ROLES
+  source "$file"
+  if [ "${HOST}" = "$TARGET" ]; then
+    HOSTNAME_CANDIDATE="$HOST"
+    HOST="$HOSTNAME_CANDIDATE"
+    break
+  fi
+done
+
+if [ -z "${HOST}" ]; then
+  HOST="$("$PICKER" "$TARGET")"
+fi
+
+echo "==> $HOST"
+ssh -t "$HOST" "$CMD"

@@ -1,0 +1,41 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+if [ $# -lt 2 ]; then
+  echo 'Gebruik: cluster-run-all <label> "<commando>"' >&2
+  exit 1
+fi
+
+LABEL="$1"
+shift
+CMD="$*"
+
+NODE_DIR="${HOME}/cluster/nodes"
+
+for file in "$NODE_DIR"/*.conf; do
+  [ -f "$file" ] || continue
+  unset HOST ARCH GPU_CLASS GPU_COUNT VRAM_CLASS ROLES
+  source "$file"
+
+  MATCH=0
+
+  if echo ",$ROLES," | grep -q ",${LABEL},"; then
+    MATCH=1
+  fi
+
+  if [ "${ARCH:-}" = "$LABEL" ] || [ "${VRAM_CLASS:-}" = "$LABEL" ]; then
+    MATCH=1
+  fi
+
+  if echo "${GPU_CLASS:-}" | grep -q "$LABEL"; then
+    MATCH=1
+  fi
+
+  if [ "$MATCH" -eq 1 ]; then
+    echo "======================================"
+    echo "HOST: $HOST"
+    echo "--------------------------------------"
+    ssh -o BatchMode=yes -o ConnectTimeout=8 "$HOST" "$CMD" || echo "FAILED: $HOST"
+    echo
+  fi
+done

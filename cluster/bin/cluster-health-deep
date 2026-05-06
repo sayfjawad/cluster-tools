@@ -1,0 +1,43 @@
+#!/usr/bin/env bash
+set -u
+
+NODES=(
+  "gx10"
+  "z8"
+  "v100-1"
+  "v100-2"
+  "vivobook"
+  "3x-v100"
+)
+
+echo "=== Cluster deep health: $(date -Is) ==="
+echo
+
+for n in "${NODES[@]}"; do
+  echo "=============================="
+  echo "NODE: $n"
+  echo "=============================="
+
+  echo "[ssh]"
+  if ssh -o BatchMode=yes -o ConnectTimeout=5 "$n" 'hostname && uptime' 2>&1; then
+    echo "SSH_OK=1"
+  else
+    echo "SSH_OK=0"
+    echo
+    continue
+  fi
+
+  echo
+  echo "[gpu]"
+  ssh -o ConnectTimeout=5 "$n" 'command -v nvidia-smi >/dev/null && nvidia-smi --query-gpu=index,name,memory.total,memory.used --format=csv,noheader || echo "no nvidia-smi"' 2>&1
+
+  echo
+  echo "[docker]"
+  ssh -o ConnectTimeout=5 "$n" 'systemctl is-active docker 2>/dev/null || true; docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}" 2>/dev/null || true' 2>&1
+
+  echo
+  echo "[ollama]"
+  ssh -o ConnectTimeout=5 "$n" 'curl -fsS http://127.0.0.1:11434/api/tags >/tmp/ollama-tags.json 2>/dev/null && echo "OLLAMA_LOCAL_OK=1" && head -c 500 /tmp/ollama-tags.json || echo "OLLAMA_LOCAL_OK=0"' 2>&1
+
+  echo
+done

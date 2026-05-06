@@ -1,0 +1,105 @@
+=== Cluster deep health: 2026-05-01T23:21:32+02:00 ===
+
+==============================
+NODE: gx10
+==============================
+[ssh]
+gx10-22ee
+ 23:21:33 up 7 days,  6:58,  2 users,  load average: 0.31, 0.21, 0.16
+SSH_OK=1
+
+[gpu]
+0, NVIDIA GB10, [N/A], [N/A]
+
+[docker]
+failed
+
+[ollama]
+OLLAMA_LOCAL_OK=1
+{"models":[{"name":"nemotron-3-nano:latest","model":"nemotron-3-nano:latest","modified_at":"2026-04-24T23:50:37.505031747+02:00","size":24271934866,"digest":"b725f11174073334edd0c2ff396b8d4e66d7dab22a5a63717ccad5a08a270cf1","details":{"parent_model":"","format":"gguf","family":"nemotron_h_moe","families":["nemotron_h_moe"],"parameter_size":"31.6B","quantization_level":"Q4_K_M"}}]}
+==============================
+NODE: z8
+==============================
+[ssh]
+HP-Z8-G4-Sayf
+ 23:21:36 up 2 days, 57 min,  0 users,  load average: 1.14, 2.74, 2.60
+SSH_OK=1
+
+[gpu]
+0, Tesla V100-SXM2-32GB, 32768 MiB, 5 MiB
+1, Quadro K2200, 4096 MiB, 56 MiB
+
+[docker]
+active
+NAMES           STATUS                  PORTS
+odp-processor   Up 2 days               127.0.0.1:8080->8080/tcp
+cassandra       Up 2 days (unhealthy)   7000-7001/tcp, 7199/tcp, 9160/tcp, 127.0.0.1:9042->9042/tcp
+
+[ollama]
+OLLAMA_LOCAL_OK=1
+{"models":[{"name":"llama3.2:latest","model":"llama3.2:latest","modified_at":"2026-04-24T22:49:07.535804247+02:00","size":2019393189,"digest":"a80c4f17acd55265feec403c7aef86be0c25983ab279d83f3bcd3abbcb5b8b72","details":{"parent_model":"","format":"gguf","family":"llama","families":["llama"],"parameter_size":"3.2B","quantization_level":"Q4_K_M"}},{"name":"qwen2.5:32b","model":"qwen2.5:32b","modified_at":"2026-02-19T16:15:57.920266316+01:00","size":19851349669,"digest":"9f13ba1299afea09d9a956fc6a8
+==============================
+NODE: v100-1
+==============================
+[ssh]
+sayf-v100-1
+ 23:21:39 up 9 days,  2:41,  2 users,  load average: 0,00, 0,00, 0,00
+SSH_OK=1
+
+[gpu]
+0, Tesla V100-SXM2-32GB, 32768 MiB, 5 MiB
+
+[docker]
+active
+NAMES     STATUS      PORTS
+ollama    Up 7 days   0.0.0.0:11434->11434/tcp, [::]:11434->11434/tcp
+
+[ollama]
+OLLAMA_LOCAL_OK=1
+{"models":[{"name":"llama3.2:latest","model":"llama3.2:latest","modified_at":"2026-04-24T20:38:17.95755008Z","size":2019393189,"digest":"a80c4f17acd55265feec403c7aef86be0c25983ab279d83f3bcd3abbcb5b8b72","details":{"parent_model":"","format":"gguf","family":"llama","families":["llama"],"parameter_size":"3.2B","quantization_level":"Q4_K_M"}}]}
+==============================
+NODE: v100-2
+==============================
+[ssh]
+ssh: connect to host 100.64.0.6 port 22: Connection timed out
+SSH_OK=0
+
+==============================
+NODE: vivobook
+==============================
+[ssh]
+sayf-vivobook
+ 23:21:47 up 7 days,  6:50,  2 users,  load average: 1,12, 1,12, 1,10
+SSH_OK=1
+
+[gpu]
+0, Quadro P2000, 4096 MiB, 2 MiB
+1, NVIDIA RTX A4500, 19190 MiB, 1 MiB
+
+[docker]
+active
+NAMES     STATUS    PORTS
+
+[ollama]
+OLLAMA_LOCAL_OK=0
+
+==============================
+NODE: 3x-v100
+==============================
+[ssh]
+sayf-3x-V100
+ 23:21:50 up  8:15,  2 users,  load average: 0,00, 0,02, 0,00
+SSH_OK=1
+
+[gpu]
+0, Tesla V100-SXM2-32GB, 32768 MiB, 0 MiB
+1, Tesla V100-SXM2-32GB, 32768 MiB, 0 MiB
+2, Tesla V100-SXM2-32GB, 32768 MiB, 0 MiB
+
+[docker]
+active
+NAMES     STATUS    PORTS
+
+[ollama]
+OLLAMA_LOCAL_OK=0
+

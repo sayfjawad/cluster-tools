@@ -1,0 +1,21 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+echo "== Hermes/OpenClaw cluster smoke test =="
+echo "DATE=$(date -Is)"
+echo
+
+echo "== planner =="
+~/cluster/bin/hermes-run-task planner 'hostname && curl -fsS http://127.0.0.1:11434/api/tags | head -c 220'
+echo
+echo
+
+echo "== code =="
+~/cluster/bin/hermes-run-task code 'hostname && nvidia-smi --query-gpu=index,name,memory.total,memory.used --format=csv,noheader'
+echo
+
+echo "== heavy =="
+~/cluster/bin/hermes-run-task heavy 'hostname && nvidia-smi --query-gpu=index,name,memory.total,memory.used --format=csv,noheader'
+echo
+
+echo "SMOKE_OK=1"

@@ -1,0 +1,29 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+if [ $# -lt 3 ]; then
+  echo 'Usage: ollama-run <node> <model> "<prompt>"' >&2
+  exit 1
+fi
+
+NODE="$1"
+MODEL="$2"
+shift 2
+PROMPT="$*"
+
+case "$NODE" in
+  z8) URL="http://100.64.0.2:11434" ;;
+  v100-1) URL="http://100.64.0.7:11434" ;;
+  v100-2) URL="http://100.64.0.6:11434" ;;
+  *)
+    echo "Unknown node: $NODE" >&2
+    exit 2
+    ;;
+esac
+
+PAYLOAD="$(jq -n \
+  --arg model "$MODEL" \
+  --arg prompt "$PROMPT" \
+  '{model:$model, prompt:$prompt, stream:false}')"
+
+curl -s "$URL/api/generate" -d "$PAYLOAD" | jq -r '.response // .error // "null"'

@@ -1,0 +1,85 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+if [ $# -lt 3 ]; then
+  echo 'Usage: ollama-bench <node|both> <model> "<prompt>"' >&2
+  exit 1
+fi
+
+TARGET="$1"
+MODEL="$2"
+shift 2
+PROMPT="$*"
+
+node_url() {
+  case "$1" in
+    v100-1) echo "http://100.64.0.7:11434" ;;
+    v100-2) echo "http://100.64.0.6:11434" ;;
+    *) return 1 ;;
+  esac
+}
+
+bench_one() {
+  local node="$1"
+  local url
+  url="$(node_url "$node")"
+
+  local tmp
+  tmp="$(mktemp)"
+
+  local start end elapsed_ms
+  start="$(date +%s%3N)"
+
+  curl -s --max-time 600 "$url/api/generate" \
+    -d "{\"model\":\"$MODEL\",\"prompt\":\"$PROMPT\",\"stream\":false}" > "$tmp"
+
+  end="$(date +%s%3N)"
+  elapsed_ms=$((end - start))
+
+  local response
+  response="$(jq -r '.response // ""' "$tmp")"
+
+  local eval_count eval_duration_ns load_duration_ns total_duration_ns
+  eval_count="$(jq -r '.eval_count // 0' "$tmp")"
+  eval_duration_ns="$(jq -r '.eval_duration // 0' "$tmp")"
+  load_duration_ns="$(jq -r '.load_duration // 0' "$tmp")"
+  total_duration_ns="$(jq -r '.total_duration // 0' "$tmp")"
+
+  local chars tokens_per_sec
+  chars="$(printf '%s' "$response" | wc -c | awk '{print $1}')"
+
+  if [ "$eval_duration_ns" -gt 0 ] && [ "$eval_count" -gt 0 ]; then
+    tokens_per_sec="$(awk "BEGIN { printf \"%.2f\", ($eval_count * 1000000000) / $eval_duration_ns }")"
+  else
+    tokens_per_sec="n/a"
+  fi
+
+  echo "======================================"
+  echo "NODE: $node"
+  echo "MODEL: $MODEL"
+  echo "ELAPSED_MS: $elapsed_ms"
+  echo "EVAL_COUNT: $eval_count"
+  echo "TOKENS_PER_SEC: $tokens_per_sec"
+  echo "LOAD_DURATION_NS: $load_duration_ns"
+  echo "TOTAL_DURATION_NS: $total_duration_ns"
+  echo "RESPONSE_CHARS: $chars"
+  echo "--------------------------------------"
+  printf '%s\n' "$response"
+  echo
+
+  rm -f "$tmp"
+}
+
+case "$TARGET" in
+  v100-1|v100-2)
+    bench_one "$TARGET"
+    ;;
+  both)
+    bench_one v100-1
+    bench_one v100-2
+    ;;
+  *)
+    echo "Unknown target: $TARGET" >&2
+    exit 2
+    ;;
+esac

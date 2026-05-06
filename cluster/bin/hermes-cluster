@@ -1,0 +1,47 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+ACTION="${1:-status}"
+shift || true
+
+case "$ACTION" in
+  status|smoke|health)
+    /home/hermes/cluster/bin/hermes-cluster-smoke
+    ;;
+
+  planner|plan|reasoning|repo-analysis)
+    /home/hermes/cluster/bin/hermes-run-task planner "${*:-hostname}"
+    ;;
+
+  code|coder|coding|test|tests|refactor|sql)
+    /home/hermes/cluster/bin/hermes-run-task code "${*:-hostname}"
+    ;;
+
+  heavy|batch|multi-gpu|gpu)
+    /home/hermes/cluster/bin/hermes-run-task heavy "${*:-hostname}"
+    ;;
+
+  explain|explainer)
+    /home/hermes/cluster/bin/hermes-run-task explain "${*:-hostname}"
+    ;;
+
+  general|fallback)
+    /home/hermes/cluster/bin/hermes-run-task general "${*:-hostname}"
+    ;;
+
+  light|vivobook)
+    /home/hermes/cluster/bin/hermes-run-task light "${*:-hostname}"
+    ;;
+
+  *)
+    echo "Usage:"
+    echo "  hermes-cluster status"
+    echo "  hermes-cluster planner '<command>'"
+    echo "  hermes-cluster code '<command>'"
+    echo "  hermes-cluster heavy '<command>'"
+    echo "  hermes-cluster explain '<command>'"
+    echo "  hermes-cluster general '<command>'"
+    echo "  hermes-cluster light '<command>'"
+    exit 1
+    ;;
+esac

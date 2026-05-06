@@ -1,0 +1,81 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+if [ $# -lt 2 ]; then
+  echo 'Usage: ollama-task <task-type> "<prompt>"' >&2
+  echo 'Task types: code, refactor, test, sql, explain, summarize, translate, reason, general' >&2
+  exit 1
+fi
+
+TASK="$1"
+shift
+PROMPT="$*"
+
+case "$TASK" in
+  code)
+    NODE="z8"
+    MODEL="llama3.2"
+    PROMPT="Write clean production-quality code. Return only the answer.
+
+$PROMPT"
+    ;;
+  refactor)
+    NODE="z8"
+    MODEL="llama3.2"
+    PROMPT="Refactor for readability, maintainability, and testability. Show improved code first, then a short explanation.
+
+$PROMPT"
+    ;;
+  test)
+    NODE="z8"
+    MODEL="llama3.2"
+    PROMPT="Write useful automated tests. Prefer clear and maintainable tests.
+
+$PROMPT"
+    ;;
+  sql)
+    NODE="z8"
+    MODEL="llama3.2"
+    PROMPT="Write correct SQL and briefly explain it.
+
+$PROMPT"
+    ;;
+  explain)
+    NODE="v100-2"
+    MODEL="nemotron-3-nano"
+    PROMPT="Explain clearly and concisely for a software engineer.
+
+$PROMPT"
+    ;;
+  summarize)
+    NODE="v100-2"
+    MODEL="nemotron-3-nano"
+    PROMPT="Summarize clearly and compactly.
+
+$PROMPT"
+    ;;
+  translate)
+    NODE="v100-2"
+    MODEL="nemotron-3-nano"
+    PROMPT="Translate accurately while preserving meaning and tone.
+
+$PROMPT"
+    ;;
+  reason)
+    NODE="v100-2"
+    MODEL="nemotron-3-nano"
+    PROMPT="Think carefully and provide a concise final answer.
+
+$PROMPT"
+    ;;
+  general)
+    NODE="v100-2"
+    MODEL="nemotron-3-nano"
+    ;;
+  *)
+    echo "Unknown task type: $TASK" >&2
+    exit 2
+    ;;
+esac
+
+exec "$HOME/cluster/bin/ollama-run" "$NODE" "$MODEL" "$PROMPT"

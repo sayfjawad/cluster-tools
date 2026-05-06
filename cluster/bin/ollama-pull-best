@@ -1,0 +1,27 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+if [ $# -ne 1 ]; then
+  echo 'Usage: ollama-pull-best <model>' >&2
+  exit 1
+fi
+
+MODEL="$1"
+
+case "$MODEL" in
+  nemotron-3-nano|nemotron-3-nano:latest)
+    NODE="v100-2"
+    URL="http://100.64.0.6:11434"
+    ;;
+  llama3.2|llama3.2:latest)
+    NODE="v100-1"
+    URL="http://100.64.0.7:11434"
+    ;;
+  *)
+    NODE="v100-1"
+    URL="http://100.64.0.7:11434"
+    ;;
+esac
+
+echo "Pulling on $NODE" >&2
+curl -s "$URL/api/pull" -d "{\"name\":\"$MODEL\",\"stream\":false}"

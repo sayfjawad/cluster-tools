@@ -1,0 +1,40 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+NODE="${1:-}"
+
+if [[ -z "$NODE" ]]; then
+  echo "Usage: hermes-worker-status <node>"
+  exit 1
+fi
+
+echo "== $NODE =="
+ssh -o BatchMode=yes -o ConnectTimeout=5 "$NODE" '
+echo "HOSTNAME=$(hostname)"
+echo "UPTIME=$(uptime -p 2>/dev/null || uptime)"
+echo "KERNEL=$(uname -r)"
+
+echo
+echo "[GPU]"
+if command -v nvidia-smi >/dev/null 2>&1; then
+  nvidia-smi --query-gpu=index,name,memory.total,memory.used --format=csv,noheader
+else
+  echo "no nvidia-smi"
+fi
+
+echo
+echo "[Docker]"
+if command -v docker >/dev/null 2>&1; then
+  docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}" 2>/dev/null || echo "docker not accessible"
+else
+  echo "docker missing"
+fi
+
+echo
+echo "[Ollama]"
+if curl -fsS http://127.0.0.1:11434/api/tags >/dev/null 2>&1; then
+  echo "OLLAMA_LOCAL_OK=1"
+else
+  echo "OLLAMA_LOCAL_OK=0"
+fi
+'

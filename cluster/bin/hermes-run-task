@@ -1,0 +1,20 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+TASK_TYPE="${1:-}"
+shift || true
+
+if [[ -z "$TASK_TYPE" ]]; then
+  echo "Usage: hermes-run-task <task-type> <command...>"
+  exit 1
+fi
+
+CMD="${*:-hostname}"
+NODE="$(~/cluster/bin/hermes-pick-worker "$TASK_TYPE")"
+
+echo "TASK_TYPE=$TASK_TYPE"
+echo "NODE=$NODE"
+echo "CMD=$CMD"
+echo
+
+ssh -o BatchMode=yes -o ConnectTimeout=8 "$NODE" "$CMD"

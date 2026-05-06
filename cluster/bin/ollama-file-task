@@ -1,0 +1,99 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+if [ $# -lt 2 ]; then
+  echo 'Usage: ollama-file-task <task-type> <file>' >&2
+  echo 'Task types: code, refactor, test, sql, explain, summarize, translate, reason, general' >&2
+  exit 1
+fi
+
+TASK="$1"
+FILE="$2"
+
+if [ ! -f "$FILE" ]; then
+  echo "File not found: $FILE" >&2
+  exit 2
+fi
+
+CONTENT="$(cat "$FILE")"
+
+case "$TASK" in
+  code)
+    PROMPT="Analyze this code file and help with it.
+
+Filename: $FILE
+
+Content:
+$CONTENT"
+    ;;
+  refactor)
+    PROMPT="Refactor the following file for readability, maintainability, and testability. Show improved code first, then a short explanation.
+
+Filename: $FILE
+
+Content:
+$CONTENT"
+    ;;
+  test)
+    PROMPT="Write useful automated tests for the following file. Prefer clear and maintainable tests.
+
+Filename: $FILE
+
+Content:
+$CONTENT"
+    ;;
+  sql)
+    PROMPT="Analyze or improve the following SQL file. Explain briefly.
+
+Filename: $FILE
+
+Content:
+$CONTENT"
+    ;;
+  explain)
+    PROMPT="Explain the following file clearly and concisely.
+
+Filename: $FILE
+
+Content:
+$CONTENT"
+    ;;
+  summarize)
+    PROMPT="Summarize the following file clearly and compactly.
+
+Filename: $FILE
+
+Content:
+$CONTENT"
+    ;;
+  translate)
+    PROMPT="Translate the following file accurately while preserving structure and meaning.
+
+Filename: $FILE
+
+Content:
+$CONTENT"
+    ;;
+  reason)
+    PROMPT="Think carefully about the following file and provide a concise final answer.
+
+Filename: $FILE
+
+Content:
+$CONTENT"
+    ;;
+  general)
+    PROMPT="Help with the following file.
+
+Filename: $FILE
+
+Content:
+$CONTENT"
+    ;;
+  *)
+    echo "Unknown task type: $TASK" >&2
+    exit 3
+    ;;
+esac
+
+exec "$HOME/cluster/bin/ollama-task" "$TASK" "$PROMPT"

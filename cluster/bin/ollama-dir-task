@@ -1,0 +1,65 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+if [ $# -lt 2 ]; then
+  echo 'Usage: ollama-dir-task <task-type> <dir>' >&2
+  echo 'Task types: code, refactor, test, sql, explain, summarize, translate, reason, general' >&2
+  exit 1
+fi
+
+TASK="$1"
+DIR="$2"
+
+if [ ! -d "$DIR" ]; then
+  echo "Directory not found: $DIR" >&2
+  exit 2
+fi
+
+MAX_FILES=20
+MAX_FILE_BYTES=50000
+
+TMP="$(mktemp)"
+COUNT=0
+
+while IFS= read -r -d '' FILE; do
+  if [ "$COUNT" -ge "$MAX_FILES" ]; then
+    break
+  fi
+
+  if ! file --mime "$FILE" | grep -q 'charset='; then
+    continue
+  fi
+
+  SIZE="$(wc -c < "$FILE" | awk '{print $1}')"
+  if [ "$SIZE" -gt "$MAX_FILE_BYTES" ]; then
+    continue
+  fi
+
+  {
+    echo "===== FILE: $FILE ====="
+    cat "$FILE"
+    echo
+  } >> "$TMP"
+
+  COUNT=$((COUNT + 1))
+done < <(find "$DIR" -type f -print0 | sort -z)
+
+if [ "$COUNT" -eq 0 ]; then
+  rm -f "$TMP"
+  echo "No suitable text files found in: $DIR" >&2
+  exit 3
+fi
+
+CONTENT="$(cat "$TMP")"
+rm -f "$TMP"
+
+PROMPT="Directory: $DIR
+
+Included files: $COUNT
+Max files: $MAX_FILES
+Max file size: $MAX_FILE_BYTES bytes
+
+Content:
+$CONTENT"
+
+exec "$HOME/cluster/bin/ollama-task" "$TASK" "$PROMPT"

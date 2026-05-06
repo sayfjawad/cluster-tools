@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+NODE_DIR="${HOME}/cluster/nodes"
+
+for file in "$NODE_DIR"/*.conf; do
+  [ -f "$file" ] || continue
+  unset HOST ARCH GPU_CLASS GPU_COUNT VRAM_CLASS ROLES
+  source "$file"
+
+  echo "======================================"
+  echo "HOST: ${HOST}"
+  echo "ARCH: ${ARCH}"
+  echo "GPU_CLASS: ${GPU_CLASS}"
+  echo "GPU_COUNT: ${GPU_COUNT}"
+  echo "VRAM_CLASS: ${VRAM_CLASS}"
+  echo "ROLES: ${ROLES}"
+  echo "--------------------------------------"
+
+  ssh -o BatchMode=yes -o ConnectTimeout=6 "$HOST" '/usr/local/bin/hermes-worker-health' || echo "UNREACHABLE"
+  echo
+done

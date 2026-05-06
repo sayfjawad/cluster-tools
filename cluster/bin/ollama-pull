@@ -1,0 +1,29 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+if [ $# -ne 2 ]; then
+  echo 'Usage: ollama-pull <node> <model>' >&2
+  exit 1
+fi
+
+NODE="$1"
+MODEL="$2"
+
+case "$NODE" in
+  z8)
+    URL="http://100.64.0.2:11434"
+    ;;
+  v100-1)
+    URL="http://100.64.0.7:11434"
+    ;;
+  v100-2)
+    URL="http://100.64.0.6:11434"
+    ;;
+  *)
+    echo "Unknown node: $NODE" >&2
+    exit 2
+    ;;
+esac
+
+curl -s "$URL/api/pull" \
+  -d "{\"name\":\"$MODEL\",\"stream\":false}"
